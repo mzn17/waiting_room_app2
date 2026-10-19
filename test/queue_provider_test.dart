@@ -1,38 +1,36 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waiting_room_app2/queue_provider.dart';
+import 'helpers/fake_client_repository.dart';
 
 void main() {
-  test('should add a client to the waiting list', () {
-    final manager = QueueProvider();
+  late QueueProvider provider;
 
-    manager.addClient('John Doe');
-
-    expect(manager.clients.length, 1);
-    expect(manager.clients.first, 'John Doe');
+  setUp(() {
+    provider = QueueProvider(FakeClientRepository());
   });
 
-  test('should remove a client from the waiting list', () {
-    final manager = QueueProvider();
-    manager.addClient('John Doe');
-    manager.addClient('Jane Doe');
+  tearDown(() => provider.dispose());
 
-    manager.removeClient('John Doe');
-
-    expect(manager.clients.length, 1);
-    expect(manager.clients.first, 'Jane Doe');
+  test('addClient adds a client to the queue', () async {
+    await provider.addClient('Alice');
+    await pumpEventQueue(); // let the stream deliver the update
+    expect(provider.clients.length, 1);
+    expect(provider.clients.first.name, 'Alice');
   });
 
-  test('should remove the first client when nextClient() is called', () {
-    // ARRANGE
-    final manager = QueueProvider();
-    manager.addClient('Client A');
-    manager.addClient('Client B');
+  test('addClient ignores empty names', () async {
+    await provider.addClient(' ');
+    await pumpEventQueue();
+    expect(provider.clients, isEmpty);
+  });
 
-    // ACT
-    manager.nextClient();
-
-    // ASSERT
-    expect(manager.clients.length, 1);
-    expect(manager.clients.first, 'Client B');
+  test('nextClient removes the first client', () async {
+    await provider.addClient('Client A');
+    await provider.addClient('Client B');
+    await pumpEventQueue();
+    await provider.nextClient();
+    await pumpEventQueue();
+    expect(provider.clients.length, 1);
+    expect(provider.clients.first.name, 'Client B');
   });
 }
