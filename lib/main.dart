@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:waiting_room_app2/client_repository.dart';
 import 'package:waiting_room_app2/queue_provider.dart';
 
 Future<void> main() async {
@@ -27,9 +26,7 @@ Future<void> main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => QueueProvider(
-        SupabaseClientRepository(Supabase.instance.client),
-      ),
+      create: (_) => QueueProvider()..initialize(),
       child: const WaitingRoomApp(),
     ),
   );
@@ -125,20 +122,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
                         final client = provider.clients[index];
                         return Card(
                           child: ListTile(
-                            title: Text(client.name),
+                            title: Text(client['name'] as String? ?? ''),
                             subtitle: Text(
-                              client.createdAt
-                                  .toLocal()
-                                  .toString()
-                                  .split('.')[0],
-                              style: const TextStyle(
-                                  fontSize: 12, color: Colors.grey),
+                              client['lat'] == null
+                                  ? '📍 Location not captured'
+                                  : '📍 ${client['lat']?.toStringAsFixed(4)}, ${client['lng']?.toStringAsFixed(4)}',
                             ),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () => context
                                   .read<QueueProvider>()
-                                  .removeClient(client.id),
+                                  .removeClient(client['id'] as String),
                             ),
                           ),
                         );

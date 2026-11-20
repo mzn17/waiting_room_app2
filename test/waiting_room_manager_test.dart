@@ -1,21 +1,42 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:waiting_room_app2/geolocation_service.dart';
+import 'package:waiting_room_app2/local_queue_service.dart';
 import 'package:waiting_room_app2/queue_provider.dart';
-import 'helpers/fake_client_repository.dart';
+
+class FakeGeolocationService extends GeolocationService {
+  @override
+  Future<Position?> getCurrentPosition() async => null;
+}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late QueueProvider provider;
+  late LocalQueueService localDb;
 
-  setUp(() {
-    provider = QueueProvider(FakeClientRepository());
+  setUpAll(() {
+    databaseFactory = databaseFactoryFfi;
   });
 
-  tearDown(() => provider.dispose());
+  setUp(() {
+    localDb = LocalQueueService(inMemory: true);
+    provider = QueueProvider(
+      localDb: localDb,
+      geoService: FakeGeolocationService(),
+    );
+  });
+
+  tearDown(() async {
+    provider.dispose();
+    await localDb.close();
+  });
 
   test('addClient adds a client to the queue', () async {
     await provider.addClient('Alice');
-    await pumpEventQueue(); // let the stream deliver the update
+    await pumpEventQueue();
     expect(provider.clients.length, 1);
-    expect(provider.clients.first.name, 'Alice');
+    expect(provider.clients.first['name'], 'Alice');
   });
 
   test('addClient ignores empty names', () async {
@@ -31,6 +52,6 @@ void main() {
     await provider.nextClient();
     await pumpEventQueue();
     expect(provider.clients.length, 1);
-    expect(provider.clients.first.name, 'Client B');
+    expect(provider.clients.first['name'], 'Client B');
   });
 }

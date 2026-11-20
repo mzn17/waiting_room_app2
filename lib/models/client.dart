@@ -1,24 +1,51 @@
+// lib/models/client.dart
 class Client {
   final String id;
   final String name;
+  final double? lat;
+  final double? lng;
   final DateTime createdAt;
+  final bool isSynced;
 
-  Client({required this.id, required this.name, required this.createdAt});
+  const Client({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    this.lat,
+    this.lng,
+    this.isSynced = true,
+  });
 
-  factory Client.fromMap(Map<String, dynamic> map) {
-    return Client(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
-    );
-  }
+  /// Fonctionne pour une ligne SQLite ET pour une ligne Supabase.
+  factory Client.fromMap(Map<String, dynamic> map) => Client(
+        id: map['id'] as String,
+        name: map['name'] as String,
+        lat: (map['lat'] as num?)?.toDouble(),
+        lng: (map['lng'] as num?)?.toDouble(),
+        createdAt: DateTime.parse(map['created_at'] as String).toUtc(),
+        isSynced: (map['is_synced'] ?? 1) == 1,
+      );
 
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'created_at': createdAt.toIso8601String(),
+  Map<String, dynamic> toLocalMap() => {
+        ...toRemoteMap(),
+        'is_synced': isSynced ? 1 : 0,
       };
 
-  @override
-  String toString() => 'Client(id: $id, name: $name, createdAt: $createdAt)';
+  /// Sans is_synced : cette colonne n'existe pas dans Supabase.
+  Map<String, dynamic> toRemoteMap() => {
+        'id': id,
+        'name': name,
+        'lat': lat,
+        'lng': lng,
+        'created_at': createdAt.toUtc().toIso8601String(),
+      };
+
+  Client copyWith({bool? isSynced}) => Client(
+        id: id,
+        name: name,
+        lat: lat,
+        lng: lng,
+        createdAt: createdAt,
+        isSynced: isSynced ?? this.isSynced,
+      );
 }
